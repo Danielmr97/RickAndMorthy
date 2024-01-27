@@ -9,6 +9,8 @@ import UIKit
 
 class ViewController: UIViewController {
     var pageNumber: Int = 1
+    var isLoadDatta = false
+    
     
     let restClient = RESTClient<PaginatedResponse<Character>>(client: Client("https://rickandmortyapi.com"))
     
@@ -23,27 +25,23 @@ class ViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         tableView.dataSource = self
+        tableView.prefetchDataSource = self
         restClient.show("/api/character",page: "1") { response in
             self.characters = response.results
         }
         
         
     }
-    @IBAction func backButton(_ sender: Any) {
-        pageNumber -= 1
-        pageNumber = pageNumber == 0 ? 0 : 1
-
-        let pageName = String(pageNumber)
-        restClient.show("/api/character", page: pageName) { response in
-            self.characters = response.results
-        }
-    }
     
-    @IBAction func nextButton(_ sender: Any) {
-        pageNumber += 1
+    func loadData(){
+        guard !isLoadDatta else{return}
+        
+        isLoadDatta = true
         let pageName = String(pageNumber)
         restClient.show("/api/character", page: pageName) { response in
-            self.characters = response.results
+            self.characters?.append(contentsOf: response.results)
+            self.tableView.reloadData()
+            self.isLoadDatta = false
         }
     }
     
@@ -65,5 +63,16 @@ extension ViewController: UITableViewDataSource {
         cell.detailTextLabel?.text = characters?[indexPath.row].species
         
         return cell
+    }
+}
+
+extension ViewController : UITableViewDataSourcePrefetching{
+    func tableView(_ tableView: UITableView, prefetchRowsAt indexPaths: [IndexPath]) {
+        let chargeviews = indexPaths.contains {$0.row >= self.characters!.count - 5}
+        if chargeviews{
+            pageNumber += 1
+            loadData()
+        }
+        
     }
 }
